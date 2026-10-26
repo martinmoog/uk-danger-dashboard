@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>UK Outage Watch</title>
+<meta name="description" content="Power cuts, flood warnings, Met Office warnings and the 3-day outlook for any UK postcode.">
+<meta name="theme-color" content="#f4f6f8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#11161c" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Outage Watch">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="ow" id="watch">
+  <header class="ow-head">
+    <div>
+      <h1 class="ow-title">UK Outage Watch</h1>
+      <p class="ow-sub">Power cuts, flood warnings, Met Office warnings and the 3-day outlook. Data checked <span class="ow-checked">—</span>.</p>
+    </div>
+    <form class="ow-pc" id="pc-form" role="search" autocomplete="off">
+      <label for="ow-postcode">Postcode</label>
+      <input id="ow-postcode" autocomplete="postal-code" spellcheck="false" placeholder="e.g. SK8 4NB" inputmode="text">
+      <button class="ow-btn" type="submit">Check</button>
+      <button class="ow-btn" type="button" id="ow-locate" title="Use my location">Near me</button>
+      <button class="ow-btn" type="button" id="ow-save" title="Save this place">Save</button>
+      <div class="ow-places" id="ow-places" aria-label="Saved places"></div>
+      <div class="ow-err" hidden></div>
+    </form>
+  </header>
+
+  <section class="ow-status" id="status" data-level="0" aria-live="polite">
+    <span class="ow-badge">Loading</span>
+    <div>
+      <p class="ow-headline">Checking your area…</p>
+      <p class="ow-take"></p>
+    </div>
+  </section>
+
+  <section class="ow-tiles" id="near-tiles" aria-label="Near you">
+    <div class="ow-tile"><span class="k"><i class="ow-sw" style="background:var(--amber)"></i>Weather warnings for your area</span>
+      <span class="v" data-k="weather_n">—</span><span class="n ow-wn"></span></div>
+    <div class="ow-tile"><span class="k"><i class="ow-sw" style="background:var(--power)"></i>Live power cuts within 25 km</span>
+      <span class="v" data-k="power_n">—</span><span class="n ow-pn"></span></div>
+    <div class="ow-tile"><span class="k"><i class="ow-sw sq" style="background:var(--flood)"></i>Flood warnings within 25 km</span>
+      <span class="v" data-k="flood_n">—</span><span class="n ow-fn"></span></div>
+    <div class="ow-tile"><span class="k">Strongest gust, next 3 days</span>
+      <span class="v ow-gust">—</span><span class="n ow-gn"></span></div>
+  </section>
+
+  <div class="ow-main">
+    <section class="ow-card" id="map-card">
+      <div class="ow-maphead">
+        <div><h2>Map</h2><p class="ow-note">Pinch or scroll to zoom. Tap anything for details.</p></div>
+        <div class="ow-toggle" role="group" aria-label="Map view">
+          <button class="ow-btn ow-v" type="button" data-view="uk">Whole UK</button>
+          <button class="ow-btn ow-v" type="button" data-view="local">Around me</button>
+        </div>
+      </div>
+      <div class="ow-map"><div class="ow-tip" hidden></div></div>
+      <div class="ow-detail" hidden></div>
+      <div class="ow-legend">
+        <span><i class="ow-sw" style="background:var(--yellow)"></i>Yellow</span>
+        <span><i class="ow-sw" style="background:var(--amber)"></i>Amber</span>
+        <span><i class="ow-sw" style="background:var(--red)"></i>Red warning</span>
+        <span><i class="ow-sw" style="background:var(--power)"></i>Power cut (size = properties off)</span>
+        <span><i class="ow-sw ring" style="border-color:var(--power)"></i>Planned power cut</span>
+        <span><i class="ow-sw sq" style="background:var(--flood)"></i>Flood warning</span>
+        <span><i class="ow-sw ring" style="border-color:var(--fg)"></i>Your place, 25 km ring</span>
+      </div>
+    </section>
+
+    <div class="ow-stack">
+      <section class="ow-card" id="nearby">
+        <h2>Near <span class="ow-pcname">you</span></h2>
+        <p class="ow-note">Everything affecting this area or within 25 km, nearest first.</p>
+        <div class="ow-scroll">
+          <table class="ow-table ow-near">
+            <thead><tr><th>What</th><th>Where</th><th class="num">km</th><th>Until</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="ow-card" id="outlook">
+        <h2>3-day outlook</h2>
+        <p class="ow-note ow-fcnote">Nearest forecast point. Shaded: gusts from 45 mph, rain from 15 mm, any lying snow, or a hard frost.</p>
+        <div class="ow-scroll">
+          <table class="ow-table ow-fc">
+            <thead><tr><th>Day</th><th class="num">Gusts mph</th><th class="num">Rain mm</th><th class="num">Snow cm</th><th class="num">Low °C</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <section class="ow-card" id="uk">
+    <h2>Across the UK</h2>
+    <p class="ow-note">All active incidents in the connected feeds.</p>
+    <div class="ow-tiles">
+      <div class="ow-tile"><span class="k">Active weather warnings</span><span class="v" data-uk="weather">—</span></div>
+      <div class="ow-tile"><span class="k">Live power cuts</span><span class="v" data-uk="power">—</span><span class="n"><b data-uk-c="power">—</b> properties off where reported</span></div>
+      <div class="ow-tile"><span class="k">Flood warnings and alerts (England)</span><span class="v" data-uk="flood">—</span></div>
+    </div>
+  </section>
+
+  <div class="ow-main">
+    <section class="ow-card" id="warnings">
+      <h2>Met Office warnings</h2>
+      <p class="ow-note">Current and upcoming warnings by region.</p>
+      <div class="ow-scroll">
+        <table class="ow-table ow-mo">
+          <thead><tr><th>Warning</th><th>Region</th><th>From</th><th>To</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+    <section class="ow-card" id="networks">
+      <h2>Power cuts by network</h2>
+      <p class="ow-note">Live incidents in the connected feeds, planned work not included.</p>
+      <div class="ow-scroll">
+        <table class="ow-table ow-net">
+          <thead><tr><th>Network</th><th class="num">Incidents</th><th class="num">Properties off</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <section class="ow-card" id="prepare">
+    <h2>Be ready</h2>
+    <p class="ow-note">Based on the government's advice on preparing for emergencies (<a href="https://prepare.campaign.gov.uk/" rel="noopener">prepare.campaign.gov.uk</a>).</p>
+    <div class="ow-prep">
+      <div><h3>Keep at home</h3><ul>
+        <li>Torch, spare batteries and a battery or wind-up radio</li>
+        <li>Charged power banks for phones</li>
+        <li>Bottled water and food that needs no cooking, for a few days</li>
+        <li>Medicines, first aid kit and copies of important documents</li>
+        <li>Some cash, in case card machines are down</li>
+      </ul></div>
+      <div><h3>If the power goes off</h3><ul>
+        <li>Call 105 from any phone to report or get updates on a power cut</li>
+        <li>Unplug appliances and leave one light on so you know when it returns</li>
+        <li>Keep fridge and freezer doors closed</li>
+        <li>Check on neighbours who may need help</li>
+        <li>Join your network's Priority Services Register if anyone at home relies on power for medical needs</li>
+      </ul></div>
+      <div><h3>Floods and storms</h3><ul>
+        <li>Sign up for free flood warnings at <a href="https://www.gov.uk/sign-up-for-flood-warnings" rel="noopener">gov.uk</a> or call Floodline on 0345 988 1188</li>
+        <li>Move valuables and medicines upstairs when a flood warning is issued</li>
+        <li>Secure bins, trampolines and garden furniture before high winds</li>
+        <li>Never touch fallen power lines; call 105, or 999 if there is danger to life</li>
+        <li>Keep emergency alerts switched on in your phone's settings</li>
+      </ul></div>
+    </div>
+  </section>
+
+  <section class="ow-card" id="feeds">
+    <h2>Data feeds</h2>
+    <p class="ow-note">What this site can and can't see. Refreshed every hour.</p>
+    <div class="ow-scroll">
+      <table class="ow-table ow-feeds">
+        <thead><tr><th>Source</th><th>Covers</th><th>Area</th><th>Status</th><th class="num">Items</th><th>Note</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer class="ow-foot">
+    <p>Not an official warning service. In an emergency call 999. Power cuts: 105. Contains public sector information licensed under the Open Government Licence v3.0, Met Office, Environment Agency and network operator data, postcode data from postcodes.io (ONS, Royal Mail), map outline from Natural Earth, forecast from Open-Meteo.com.</p>
+    <p><a href="https://github.com/martinmoog/uk-danger-dashboard" rel="noopener">Source on GitHub</a></p>
+  </footer>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
