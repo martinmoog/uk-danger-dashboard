@@ -39,6 +39,11 @@ jobs:
           curl -fsS "$SITE/data/events.json" -o "$RUNNER_TEMP/previous-events.json" || echo '[]' > "$RUNNER_TEMP/previous-events.json"
           curl -fsS "$SITE/data/alert-state.json" -o "$RUNNER_TEMP/previous-alert-state.json" || echo '{}' > "$RUNNER_TEMP/previous-alert-state.json"
 
+      - name: List secret names (temporary diagnostic, names only)
+        env:
+          ALL_SECRETS: ${{ toJSON(secrets) }}
+        run: python -c "import json,os; print('::notice title=Secret names::' + ', '.join(sorted(k for k in json.loads(os.environ['ALL_SECRETS']) if k != 'github_token')))"
+
       - name: Fetch the feeds
         env:
           ENWL_API_KEY: ${{ secrets.ENWL_API_KEY }}
