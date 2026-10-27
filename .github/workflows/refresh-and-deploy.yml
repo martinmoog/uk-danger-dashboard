@@ -6,6 +6,11 @@ on:
   schedule:
     - cron: '17 * * * *'   # hourly, off the top of the hour
   workflow_dispatch:
+    inputs:
+      test_alert:
+        description: Send a test notification to your ntfy topic
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -45,6 +50,7 @@ jobs:
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
           ALERT_POSTCODES: ${{ secrets.ALERT_POSTCODES }}
           SITE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
+          TEST_ALERT: ${{ inputs.test_alert }}
         run: python scripts/alerts.py site/data "$RUNNER_TEMP/previous-alert-state.json"
 
       - uses: actions/upload-pages-artifact@v3

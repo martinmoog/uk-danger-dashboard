@@ -8,6 +8,7 @@ Settings come from the environment, so nothing personal is stored in the reposit
   NTFY_SERVER       optional, defaults to https://ntfy.sh
   SITE_URL          optional, link opened when the notification is tapped
   DRY_RUN           set to 1 to print instead of sending
+  TEST_ALERT        set to "true" to also send a test notification
 
 Each run works out the level for every postcode (0 clear, 1 be aware, 2 be prepared, 3 take action),
 using the same rules as the site. A notification is sent when a postcode reaches level 2 or more with
@@ -96,6 +97,9 @@ def main():
         print('NTFY_TOPIC not set; skipping alerts.')
         return
     postcodes = [p.strip() for p in os.environ.get('ALERT_POSTCODES', '').split(',') if p.strip()]
+    if os.environ.get('TEST_ALERT') == 'true':
+        send('Test alert from UK Outage Watch', f'Alerts are working. Watching {len(postcodes)} postcode(s).', 1, postcodes[0] if postcodes else '')
+        print('::notice title=Alerts::Sent a test notification.')
     events = json.load(open(os.path.join(DATA, 'events.json')))
     try:
         forecast = json.load(open(os.path.join(DATA, 'forecast.json')))
