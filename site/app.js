@@ -227,7 +227,7 @@
       const tr = tb.insertRow();
       cell(tr, r.provider); cell(tr, r.feed); cell(tr, r.coverage);
       const st = tr.insertCell(); const t = document.createElement('span');
-      t.className = 'ow-tag ' + (r.status === 'live' ? 'live' : r.status === 'failed' ? 'failed' : ''); t.textContent = r.status; st.append(t);
+      t.className = 'ow-tag ' + (r.status === 'live' ? 'live' : r.status === 'failed' ? 'failed' : r.status === 'stale' ? 'stale' : ''); t.textContent = r.status; st.append(t);
       cell(tr, fmt(r.items), 'num'); cell(tr, r.note || '');
     }
   }

@@ -98,6 +98,7 @@ a { color: inherit; }
 .ow-tag.you { border-color: var(--fg); color: var(--fg); }
 .ow-tag.live { color: var(--ok); border-color: var(--ok); }
 .ow-tag.failed { color: var(--bad); border-color: var(--bad); }
+.ow-tag.stale { color: var(--amber); border-color: var(--amber); }
 .ow-hi1 { background: color-mix(in srgb, var(--yellow) 30%, transparent); }
 .ow-hi2 { background: color-mix(in srgb, var(--amber) 32%, transparent); }
 

@@ -1,6 +1,8 @@
 """Fetch the public UK feeds and write events.json, feeds.json and forecast.json for the site.
 
-Usage: python scripts/refresh.py OUT_DIR scripts/ref.json
+Usage: python scripts/refresh.py OUT_DIR scripts/ref.json [PREVIOUS_EVENTS_JSON]
+
+When a feed fails, its incidents from PREVIOUS_EVENTS_JSON are kept and the feed is marked stale.
 
 API keys come from the environment: ENWL_API_KEY (Electricity North West) and
 SPEN_API_KEY (SP Energy Networks). A network whose key is missing is listed as
@@ -76,7 +78,14 @@ def clean(s, n=300):
     return s if len(s) <= n else s[:n - 1].rsplit(' ', 1)[0] + '…'
 
 events, feeds = [], []
-def feed(name, provider, coverage, fn):
+# The previous events file (optional third argument): when a feed fails, its last good incidents are kept.
+PREV = []
+if len(sys.argv) > 3:
+    try: PREV = json.load(open(sys.argv[3]))
+    except Exception: PREV = []
+
+def feed(name, provider, coverage, fn, prefix=None):
+    start = len(events)
     try:
         n, note = fn()
         feeds.append({'feed': name, 'provider': provider, 'coverage': coverage, 'status': 'live', 'items': n, 'checked': STAMP, 'note': note})
@@ -85,7 +94,14 @@ def feed(name, provider, coverage, fn):
     except SkipRun:
         feeds.append({'feed': name, 'provider': provider, 'coverage': coverage, 'status': 'live', 'items': 0, 'checked': STAMP, 'note': 'Refreshes every 3 hours; showing the last copy.'})
     except Exception as e:
-        feeds.append({'feed': name, 'provider': provider, 'coverage': coverage, 'status': 'failed', 'items': 0, 'checked': STAMP, 'note': f'Could not fetch this run ({type(e).__name__}).'})
+        del events[start:]
+        kept = [x for x in PREV if prefix and x.get('id', '').startswith(prefix)]
+        if kept:
+            events.extend(kept)
+            feeds.append({'feed': name, 'provider': provider, 'coverage': coverage, 'status': 'stale', 'items': len(kept), 'checked': STAMP,
+                          'note': f'Latest fetch failed ({type(e).__name__}); showing the previous update.'})
+        else:
+            feeds.append({'feed': name, 'provider': provider, 'coverage': coverage, 'status': 'failed', 'items': 0, 'checked': STAMP, 'note': f'Could not fetch this run ({type(e).__name__}).'})
 
 # ---- Met Office weather warnings
 def metoffice():
@@ -120,7 +136,7 @@ def metoffice():
         n += 1
     note = 'Unmatched area names: ' + ', '.join(sorted(UNMATCHED)) if UNMATCHED else ''
     return n, note
-feed('Weather warnings', 'Met Office', 'All UK', metoffice)
+feed('Weather warnings', 'Met Office', 'All UK', metoffice, 'mo-')
 
 # ---- Environment Agency flood warnings (England)
 def ea():
@@ -139,7 +155,7 @@ def ea():
             'end': None, 'customers': None, 'network': 'Environment Agency',
             'link': 'https://check-for-flooding.service.gov.uk/target-area/' + f['floodAreaID'], 'detail': clean(f.get('message'))})
     return len(active), ''
-feed('Flood warnings', 'Environment Agency', 'England', ea)
+feed('Flood warnings', 'Environment Agency', 'England', ea, 'ea-')
 
 # ---- SSEN power cuts
 def ssen():
@@ -156,7 +172,7 @@ def ssen():
             'customers': c, 'network': net, 'link': 'https://powertrack.ssen.co.uk/powertrack', 'detail': clean(f.get('message'), 220)})
         n += 1
     return n, 'This feed returns at most 300 incidents.' if len(faults) >= 300 else ''
-feed('Power cuts', 'SSEN', 'North of Scotland and central southern England', ssen)
+feed('Power cuts', 'SSEN', 'North of Scotland and central southern England', ssen, 'ssen-')
 
 # ---- National Grid (NGED) power cuts
 def nged():
@@ -177,7 +193,7 @@ def nged():
             'detail': f"Status: {r.get('Status')}. {r.get('Voltage')} network."})
         n += 1
     return n, ''
-feed('Power cuts', 'National Grid', 'Midlands, South West England and South Wales', nged)
+feed('Power cuts', 'National Grid', 'Midlands, South West England and South Wales', nged, 'nged-')
 
 # ---- UK Power Networks power cuts
 def ukpn():
@@ -198,7 +214,7 @@ def ukpn():
             'detail': clean(r.get('mainmessage') or r.get('plannedincidentreason'), 220)})
         n += 1
     return n, ''
-feed('Power cuts', 'UK Power Networks', 'London, South East and East of England', ukpn)
+feed('Power cuts', 'UK Power Networks', 'London, South East and East of England', ukpn, 'ukpn-')
 
 # ---- Northern Powergrid power cuts (one row per postcode, grouped by incident)
 def npg():
@@ -220,7 +236,7 @@ def npg():
             'end': t(r.get('estimatedtimetillresolution')), 'customers': c, 'network': 'Northern Powergrid (' + (r.get('area') or '') + ')',
             'link': 'https://www.northernpowergrid.com/power-cuts', 'detail': clean(r.get('reason'), 220)})
     return len(inc), ''
-feed('Power cuts', 'Northern Powergrid', 'North East England and Yorkshire', npg)
+feed('Power cuts', 'Northern Powergrid', 'North East England and Yorkshire', npg, 'npg-')
 
 # ---- Electricity North West live and planned power cuts (needs ENWL_API_KEY)
 def enwl():
@@ -252,7 +268,7 @@ def enwl():
             'customers': 0, 'network': 'Electricity North West', 'link': 'https://www.enwl.co.uk/power-cuts/', 'detail': 'Planned supply interruption on ' + r['outage_date']})
         n += 1
     return n, ''
-feed('Power cuts', 'Electricity North West', 'North West England', enwl)
+feed('Power cuts', 'Electricity North West', 'North West England', enwl, 'enwl-')
 
 # ---- SP Energy Networks live power cuts (needs SPEN_API_KEY; no property counts published)
 def spen():
@@ -271,7 +287,7 @@ def spen():
             'link': 'https://www.spenergynetworks.co.uk/pages/power_cuts_map.aspx', 'detail': f"Status: {r.get('status')}. {r.get('voltage')} network."})
         n += 1
     return n, 'Property counts are not published for this network.'
-feed('Power cuts', 'SP Energy Networks', 'Central and southern Scotland, Merseyside, Cheshire and North Wales', spen)
+feed('Power cuts', 'SP Energy Networks', 'Central and southern Scotland, Merseyside, Cheshire and North Wales', spen, 'spen-')
 
 for prov, cov, note in [('NIE Networks', 'Northern Ireland', 'No public data feed. Check https://powercheck.nienetworks.co.uk/'),
                         ('SEPA', 'Scotland', 'No public data feed. Check https://floodline.sepa.org.uk/floodupdates/'),
