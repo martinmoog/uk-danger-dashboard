@@ -324,3 +324,11 @@ json.dump(events, open(OUT + '/events.json', 'w'), separators=(',', ':'))
 json.dump(feeds, open(OUT + '/feeds.json', 'w'), separators=(',', ':'))
 if forecast: json.dump(forecast, open(OUT + '/forecast.json', 'w'), separators=(',', ':'))
 print(json.dumps({'events': len(events), 'forecast': len(forecast or []), 'feeds': [(f['provider'], f['status'], f['items'], f['note'][:120]) for f in feeds]}, indent=0))
+
+if os.environ.get('GITHUB_ACTIONS'):
+    # Workflow annotations, so feed problems show on the run page without opening the log
+    live = ', '.join(f"{f['provider']} {f['items']}" for f in feeds if f['status'] == 'live')
+    print(f"::notice title=Feeds live::{len(events)} events. {live}")
+    for f in feeds:
+        if f['status'] in ('failed', 'stale'):
+            print(f"::warning title={f['provider']} {f['status']}::{f['note']}")
