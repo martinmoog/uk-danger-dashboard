@@ -25,6 +25,8 @@ Postcode lookups and "Near me" use [postcodes.io](https://postcodes.io) from the
 
 Keys are free from each network's open data portal and are stored as repository secrets (Settings → Secrets and variables → Actions). Without a key that network is shown as "not connected".
 
+`.github/workflows/keep-alive.yml` re-enables the scheduled workflows on the 1st of each month, so GitHub's 60-day inactivity rule never pauses the hourly refresh.
+
 ## Phone alerts
 
 `scripts/alerts.py` runs after each refresh and posts to [ntfy](https://ntfy.sh) when a watched postcode reaches amber ("Be prepared") or red ("Take action"), and once more when it clears. It only alerts about something once. Set these repository secrets:
