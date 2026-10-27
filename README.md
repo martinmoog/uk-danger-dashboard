@@ -25,6 +25,15 @@ Postcode lookups and "Near me" use [postcodes.io](https://postcodes.io) from the
 
 Keys are free from each network's open data portal and are stored as repository secrets (Settings → Secrets and variables → Actions). Without a key that network is shown as "not connected".
 
+## Phone alerts
+
+`scripts/alerts.py` runs after each refresh and posts to [ntfy](https://ntfy.sh) when a watched postcode reaches amber ("Be prepared") or red ("Take action"), and once more when it clears. It only alerts about something once. Set these repository secrets:
+
+- `NTFY_TOPIC`: a private, hard-to-guess topic name. Subscribe to the same name in the ntfy app.
+- `ALERT_POSTCODES`: the postcodes to watch, comma separated.
+
+Postcodes are never written to the repository or the site; the alert state published with the site holds only salted hashes.
+
 ## Run locally
 
 ```sh

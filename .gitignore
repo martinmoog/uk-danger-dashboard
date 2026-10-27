@@ -2,4 +2,5 @@
 site/data/events.json
 site/data/feeds.json
 site/data/forecast.json
+site/data/alert-state.json
 __pycache__/

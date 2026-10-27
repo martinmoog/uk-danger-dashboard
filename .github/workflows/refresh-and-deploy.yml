@@ -32,12 +32,20 @@ jobs:
           SITE="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}"
           curl -fsS "$SITE/data/forecast.json" -o site/data/forecast.json || echo '[]' > site/data/forecast.json
           curl -fsS "$SITE/data/events.json" -o "$RUNNER_TEMP/previous-events.json" || echo '[]' > "$RUNNER_TEMP/previous-events.json"
+          curl -fsS "$SITE/data/alert-state.json" -o "$RUNNER_TEMP/previous-alert-state.json" || echo '{}' > "$RUNNER_TEMP/previous-alert-state.json"
 
       - name: Fetch the feeds
         env:
           ENWL_API_KEY: ${{ secrets.ENWL_API_KEY }}
           SPEN_API_KEY: ${{ secrets.SPEN_API_KEY }}
         run: python scripts/refresh.py site/data scripts/ref.json "$RUNNER_TEMP/previous-events.json"
+
+      - name: Send phone alerts
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          ALERT_POSTCODES: ${{ secrets.ALERT_POSTCODES }}
+          SITE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
+        run: python scripts/alerts.py site/data "$RUNNER_TEMP/previous-alert-state.json"
 
       - uses: actions/upload-pages-artifact@v3
         with:
